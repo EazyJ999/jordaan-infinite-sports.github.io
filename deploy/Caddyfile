@@ -1,0 +1,4 @@
+example.co.za, www.example.co.za {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
+}

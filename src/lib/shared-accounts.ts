@@ -1,4 +1,5 @@
 import type { Sql } from "@/lib/db";
+import { readDataFile, writeDataFile } from "@/lib/disk-store";
 
 const PATH = "catalog/accounts.json";
 
@@ -22,18 +23,36 @@ function asBool(value: unknown) {
 }
 
 async function readSnapshot(): Promise<Snapshot | null> {
+  const local = await readDataFile(PATH);
+  if (local) {
+    try {
+      const parsed = JSON.parse(local) as Partial<Snapshot>;
+      if (parsed && Array.isArray(parsed.users)) {
+        return {
+          users: parsed.users,
+          accounts: Array.isArray(parsed.accounts) ? parsed.accounts : [],
+          sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+          owners: Array.isArray(parsed.owners) ? parsed.owners : [],
+        };
+      }
+    } catch {
+      // Fall through to the remote copy.
+    }
+  }
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   const { get } = await import("@vercel/blob");
   const result = await get(PATH, { access: "private", useCache: false });
   if (!result || result.statusCode !== 200 || !result.stream) return null;
   const parsed = JSON.parse(await new Response(result.stream).text()) as Partial<Snapshot>;
   if (!parsed || !Array.isArray(parsed.users)) return null;
-  return {
+  const snapshot = {
     users: parsed.users,
     accounts: Array.isArray(parsed.accounts) ? parsed.accounts : [],
     sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
     owners: Array.isArray(parsed.owners) ? parsed.owners : [],
   };
+  if (process.env.DATA_DIR) await writeDataFile(PATH, JSON.stringify(snapshot));
+  return snapshot;
 }
 
 /** Put saved logins back before sign-in. A new server would otherwise forget them. */
@@ -137,7 +156,6 @@ export async function pullAccounts(sql: Sql) {
 
 /** Keep the admin login so the next visit can use the same email and password. */
 export async function pushAccounts(sql: Sql) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const users = await sql<Row>`select "id", "name", "email", "emailVerified", "image", "createdAt"::text, "updatedAt"::text from "user"`;
   const accounts = await sql<Row>`
     select "id", "accountId", "providerId", "userId", "password", "createdAt"::text, "updatedAt"::text
@@ -150,6 +168,11 @@ export async function pushAccounts(sql: Sql) {
   const owners = await sql<Row>`select id, user_id, seeded from shop_owner`;
   if (users.length === 0) return;
   const body: Snapshot = { users, accounts, sessions, owners };
+  if (process.env.DATA_DIR) {
+    await writeDataFile(PATH, JSON.stringify(body));
+    return;
+  }
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const { put } = await import("@vercel/blob");
   await put(PATH, JSON.stringify(body), {
     access: "private",

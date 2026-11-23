@@ -1,4 +1,5 @@
 import type { Sql } from "@/lib/db";
+import { readDataFile, writeDataFile } from "@/lib/disk-store";
 
 const PATH = "catalog/shop.json";
 
@@ -35,6 +36,14 @@ function isSnap(value: unknown): value is Snap {
 }
 
 async function readSnaps(): Promise<Snap[] | null> {
+  const local = await readDataFile(PATH);
+  if (local) {
+    const parsed = JSON.parse(local) as unknown;
+    if (Array.isArray(parsed)) {
+      const rows = parsed.filter(isSnap);
+      if (rows.length > 0) return rows;
+    }
+  }
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   const { get } = await import("@vercel/blob");
   const result = await get(PATH, { access: "private", useCache: false });
@@ -42,6 +51,7 @@ async function readSnaps(): Promise<Snap[] | null> {
   const parsed = JSON.parse(await new Response(result.stream).text()) as unknown;
   if (!Array.isArray(parsed)) return null;
   const rows = parsed.filter(isSnap);
+  if (rows.length > 0 && process.env.DATA_DIR) await writeDataFile(PATH, JSON.stringify(rows));
   return rows.length > 0 ? rows : null;
 }
 
@@ -119,7 +129,6 @@ export async function pullSharedCatalog(sql: Sql) {
 
 /** Publish the rail so every shop server shows the same prices. */
 export async function pushSharedCatalog(sql: Sql) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const rows = await sql<{
     slug: string;
     name: string;
@@ -177,6 +186,11 @@ export async function pushSharedCatalog(sql: Sql) {
     sortOrder: Number(row.sort_order) || 0,
     updatedAt: row.updated_at || new Date().toISOString(),
   }));
+  if (process.env.DATA_DIR) {
+    await writeDataFile(PATH, JSON.stringify(snaps));
+    return;
+  }
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const { put } = await import("@vercel/blob");
   await put(PATH, JSON.stringify(snaps), {
     access: "private",

@@ -120,8 +120,12 @@ const vercelHosts = ["VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_URL", "VERCEL_BRAN
   .filter((value): value is string => Boolean(value))
   .map((value) => `https://${value.replace(/^https?:\/\//, "").replace(/\/$/, "")}`);
 const vercelOrigins = env("VERCEL") ? ["*.vercel.app", "https://*.vercel.app", ...vercelHosts] : vercelHosts;
+const extraOrigins = (env("SHOP_ORIGINS") ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter((value) => value.startsWith("http"));
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS, ...vercelOrigins]
+  ? [explicitBaseURL, ...extraOrigins, ...LOCAL_DEV_ORIGINS, ...vercelOrigins]
   : [
       // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
