@@ -53,6 +53,14 @@ export function SiteFooter() {
               {WHATSAPP_DISPLAY}
             </a>
           </p>
+          <a
+            href="https://g.page/r/CZ9bDdaEPGaBEAI/review"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-block text-sm underline"
+          >
+            Leave a Google review
+          </a>
           <Link to="/news" className="mt-3 block text-sm underline">
             Daily news
           </Link>

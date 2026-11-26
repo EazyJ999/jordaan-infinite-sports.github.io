@@ -12,6 +12,11 @@ const SOCIALS = [
     href: "https://www.tiktok.com/@jordansportclothingrsa",
   },
   {
+    id: "google",
+    label: "Google review",
+    href: "https://g.page/r/CZ9bDdaEPGaBEAI/review",
+  },
+  {
     id: "whatsapp",
     label: "WhatsApp",
     href: `https://wa.me/${WHATSAPP_NUMBER}`,
@@ -54,6 +59,16 @@ function SocialIcon({ id }: { id: (typeof SOCIALS)[number]["id"] }) {
         <path
           fill="currentColor"
           d="M14.2 3c.4 2.4 1.8 4 4.1 4.4v2.5a7 7 0 0 1-4.1-1.3v6.6a5.7 5.7 0 1 1-5.7-5.7c.3 0 .6 0 .9.1v2.7a3 3 0 1 0 2.1 2.9V3z"
+        />
+      </svg>
+    );
+  }
+  if (id === "google") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+        <path
+          fill="currentColor"
+          d="M12 2.2l2.4 6.6h6.8l-5.5 4.2 2.1 6.7L12 15.8 6.2 19.7l2.1-6.7L2.8 8.8h6.8z"
         />
       </svg>
     );
